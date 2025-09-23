@@ -1,4 +1,5 @@
 import pyodbc
+import os
 
 DB_SERVER = "ecw-db.lasantehealth.org"
 DB_DATABASE = "mobiledoc"
@@ -13,9 +14,15 @@ CONN_STR = (
     f"PWD={DB_PASS};"
 )
 
-try:
-    conn = pyodbc.connect(CONN_STR)
-    print("✅")
-    conn.close()
-except:
-    print("❌")
+# === Output folder for CSV exports ===
+EXPORT_PATH = r"C:\Users\57310\Desktop\LASANTE\LaSante\Images"
+os.makedirs(EXPORT_PATH, exist_ok=True)
+
+# Quick connection test (optional)
+if __name__ == "__main__":
+    try:
+        conn = pyodbc.connect(CONN_STR)
+        print("✅ Connection successful")
+        conn.close()
+    except Exception as e:
+        print("❌ Connection failed:", e)
