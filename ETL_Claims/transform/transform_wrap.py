@@ -1,15 +1,13 @@
 import pandas as pd
 from extract.extract_data import get_base_tables
 
-
 def build_wrap(edi_inv_insurance, insurance, paymentdetail):
     """
     Classifies wrap insurances into MRW, MDW, or WrapUndefined.
     Returns one row per invoice with aggregated amounts.
     """
 
-    # Normalize insurance ID column for consistency  py -m transform.transform_wrap
-
+    # Normalize insurance ID column for consistency
     insurance = insurance.rename(columns={"insId": "InsId"})
 
     # Identify wrap insurances by name
@@ -38,6 +36,11 @@ def build_wrap(edi_inv_insurance, insurance, paymentdetail):
         fill_value=0
     ).reset_index()
 
+    # Ensure all expected columns exist
+    for col in ["MRW", "MDW", "WrapUndefined"]:
+        if col not in wrap.columns:
+            wrap[col] = 0
+
     return wrap
 
 
@@ -54,6 +57,7 @@ def test_wrap():
 
         print("✅ Wrap dataset sample (10 rows):")
         print(wrap.head(10))
+        print("\nColumns:", wrap.columns.tolist())
 
     except Exception as e:
         print(f"❌ Error in test_wrap: {e}")
