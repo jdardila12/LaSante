@@ -1,15 +1,19 @@
+import pandas as pd
+from extract.extract_data import get_base_tables
+
 def build_payments(edi_inspayments, edi_paymentdetail, edi_invoice, claiminsurance_vw):
     """
-    Replica el pivot de #Payments:
-    Clasifica pagos en PrimaryPaid, SecondaryPaid, TertiaryPaid, UnknownPaid
+    Builds the payments pivot (#Payments).
+    Classifies amounts into PrimaryPaid, SecondaryPaid, TertiaryPaid, UnknownPaid.
     """
-    df = edi_inspayments.merge(edi_paymentdetail, left_on="paymentId", right_on="paymentId")
-    df = df.merge(edi_invoice[["Id"]], left_on="invoiceId", right_on="Id")
 
-    # Agregar columnas de insurance
-    df = df.merge(claiminsurance_vw, left_on="invoiceId", right_on="ClaimId")
+    # Join payments header with details
+    df = edi_inspayments.merge(edi_paymentdetail, on="paymentId", how="inner")
 
-    # Clasificar pagos
+    # Add insurance mapping (Primary / Secondary / Tertiary)
+    df = df.merge(claiminsurance_vw, left_on="invoiceId", right_on="ClaimId", how="left")
+
+    # Classify payment type
     def classify(row):
         if row["ClaimInsId"] == row["PrimaryInsId"]:
             return "PrimaryPaid"
@@ -22,7 +26,7 @@ def build_payments(edi_inspayments, edi_paymentdetail, edi_invoice, claiminsuran
 
     df["PaymentClass"] = df.apply(classify, axis=1)
 
-    # Pivot
+    # Pivot to aggregate by invoice
     payments = df.pivot_table(
         index="invoiceId",
         columns="PaymentClass",
@@ -32,3 +36,26 @@ def build_payments(edi_inspayments, edi_paymentdetail, edi_invoice, claiminsuran
     ).reset_index()
 
     return payments
+
+
+def test_payments():
+    """Runs build_payments with extracted tables and shows 10 rows"""
+    try:
+        data = get_base_tables()
+
+        payments = build_payments(
+            data["dbo.edi_inspayments"],
+            data["dbo.edi_paymentdetail"],
+            data["dbo.edi_invoice"],
+            data["dbo.ClaimInsurance_vw"]
+        )
+
+        print("✅ Payments dataset sample (10 rows):")
+        print(payments.head(10))
+
+    except Exception as e:
+        print(f"❌ Error in test_payments: {e}")
+
+
+if __name__ == "__main__":
+    test_payments()
