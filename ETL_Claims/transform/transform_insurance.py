@@ -4,12 +4,12 @@ from extract.extract_data import get_base_tables
 
 def build_claiminsurance(claiminsurance_vw, insurance):
     """
-    Replica la lógica de #ClaimInsurance_vw del SQL:
-    - Quita seguros tipo wrap
-    - Ajusta Secundario/Terciario
+    Replicates the SQL logic of #ClaimInsurance_vw:
+    - Removes wrap-type insurances
+    - Adjusts Secondary/Tertiary insurance assignments
     """
 
-    # Detectar seguros tipo wrap
+    # Identify insurance IDs that belong to wrap-type plans
     wrap_ids = insurance.loc[
         insurance["insuranceName"].str.contains("wrap", case=False, na=False),
         "insId"
@@ -17,12 +17,14 @@ def build_claiminsurance(claiminsurance_vw, insurance):
 
     df = claiminsurance_vw.copy()
 
-    # Eliminar secundario/terciario si son wrap
+    # Remove Secondary/Tertiary if they are wrap-type insurances
     df["SecondaryInsId"] = df["SecondaryInsId"].apply(lambda x: None if x in wrap_ids else x)
     df["TertiaryInsId"] = df["TertiaryInsId"].apply(lambda x: None if x in wrap_ids else x)
 
-    # Ajustar: si secundario es nulo, usar terciario
+    # If Secondary is null, replace it with Tertiary
     df["SecondaryInsId"] = df["SecondaryInsId"].fillna(df["TertiaryInsId"])
+
+    # Avoid duplication: if Tertiary equals Secondary, clear Tertiary
     df["TertiaryInsId"] = df["TertiaryInsId"].where(df["TertiaryInsId"] != df["SecondaryInsId"])
 
     return df
