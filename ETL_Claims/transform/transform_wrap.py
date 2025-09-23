@@ -1,5 +1,6 @@
 import pandas as pd
-from extract_data import get_base_tables  # importa las tablas extraídas
+from extract.extract_data import get_base_tables
+
 
 def build_wrap(edi_inv_insurance, insurance, paymentdetail):
     """
