@@ -1,62 +1,72 @@
+import pandas as pd
 from extract.extract_data import get_base_tables
 from transform.transform_invoice import build_invoice
-from transform.transform_insurance import build_claiminsurance
+from transform.transform_claiminsurance import build_claiminsurance
 from transform.transform_payments import build_payments
 from transform.transform_wrap import build_wrap
 from transform.transform_claims import build_claims
+from load.load_data import save_to_csv
 
 
 def main():
-    print("🚀 Iniciando ETL de Claims\n")
+    print("=== Starting ETL Process ===")
 
     # 1. Extract
-    print("📥 Extrayendo tablas base desde SQL Server...")
-    base = get_base_tables()
-    print(f"✅ Se cargaron {len(base)} tablas\n")
+    print("Extracting base tables...")
+    data = get_base_tables()
 
-    # 2. Transform - Invoice
-    print("🧾 Transformando facturas (invoice)...")
+    # 2. Transform: Invoice
+    print("Building invoice...")
     invoice = build_invoice(
-        base["edi_invoice"],
-        base["enc"],
-        base["doctors"],
-        base["annualnotes"],
-        base["inv_claimstatus_log"]
+        data["dbo.edi_invoice"],
+        data["dbo.enc"],
+        data["dbo.doctors"],
+        data["dbo.annualnotes"],
+        data["dbo.edi_inv_claimstatus_log"]
     )
-    print(f"   -> Facturas procesadas: {len(invoice)} registros\n")
 
-    # 3. Transform - Insurance
-    print("🛡️ Procesando seguros...")
-    insurance = build_claiminsurance(
-        base["ClaimInsurance_vw"],
-        base["insurance"],
-        base["edi_inv_insurance"]
+    # 3. Transform: ClaimInsurance (cleaning wrap insurance)
+    print("Building claim insurance...")
+    claiminsurance = build_claiminsurance(
+        data["dbo.ClaimInsurance_vw"],
+        data["dbo.insurance"]
     )
-    print(f"   -> Seguros procesados: {len(insurance)} registros\n")
 
-    # 4. Transform - Payments
-    print("💵 Procesando pagos...")
-    payments = build_payments(base["edi_inspayments"], base["edi_paymentdetail"])
-    print(f"   -> Pagos procesados: {len(payments)} registros\n")
+    # 4. Transform: Payments
+    print("Building payments...")
+    payments = build_payments(
+        data["dbo.edi_inspayments"],
+        data["dbo.edi_paymentdetail"],
+        invoice,
+        claiminsurance
+    )
 
-    # 5. Transform - Wrap
-    print("📦 Consolidando wrap...")
-    wrap = build_wrap(invoice, insurance, payments)
-    print(f"   -> Wrap consolidado: {len(wrap)} registros\n")
+    # 5. Transform: Wrap
+    print("Building wrap...")
+    wrap = build_wrap(
+        data["dbo.edi_inv_insurance"],
+        data["dbo.insurance"],
+        data["dbo.edi_paymentdetail"]
+    )
 
-    # 6. Transform - Claims
-    print("📑 Generando claims finales...")
+    # 6. Transform: Final Claims
+    print("Building claims...")
     claims = build_claims(
-        wrap,
-        base["claimstatuscodes"],
-        base["edi_facilities"],
-        base["ClaimClassValidation"]
+        invoice,
+        claiminsurance,
+        data["dbo.edi_inspayments"],
+        data["dbo.edi_paymentdetail"],
+        data["dbo.edi_inv_insurance"],
+        data["dbo.insurance"],
+        data["dbo.claimstatuscodes"],
+        data["dbo.edi_facilities"]
     )
-    print(f"✅ Claims consolidados: {len(claims)} registros\n")
 
-    # 7. Guardar en CSV
-    claims.to_csv("ClaimResults.csv", index=False)
-    print("📂 Archivo ClaimResults.csv generado.")
+    # 7. Load: Save claims dataset to CSV (chunks of 2000 rows)
+    print("Saving final claims dataset...")
+    save_to_csv(claims, "claims", max_rows=2000)
+
+    print("✅ ETL Process finished successfully!")
 
 
 if __name__ == "__main__":
