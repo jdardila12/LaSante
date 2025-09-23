@@ -43,6 +43,53 @@ def get_base_tables():
     return data
 
 
+def describe_table_schema(table: str):
+    """Devuelve las columnas y sus tipos de datos para una tabla específica"""
+    query = f"""
+        SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_NAME = '{table.split('.')[-1]}'
+    """
+    try:
+        with pyodbc.connect(CONN_STR) as conn:
+            df = pd.read_sql(query, conn)
+            return df
+    except Exception as e:
+        print(f"❌ Error obteniendo esquema de {table}: {e}")
+        return None
+
+
+def get_all_schemas():
+    """Devuelve un diccionario con esquema (campos y tipos) de todas las tablas"""
+    schemas = {}
+    for table in TABLES:
+        schema_df = describe_table_schema(table)
+        if schema_df is not None:
+            schemas[table] = schema_df
+    return schemas
+
+
+def count_rows(table: str) -> int:
+    """Devuelve el número de filas de una tabla"""
+    query = f"SELECT COUNT(*) AS total FROM {table}"
+    try:
+        with pyodbc.connect(CONN_STR) as conn:
+            df = pd.read_sql(query, conn)
+            return int(df["total"].iloc[0])
+    except Exception as e:
+        print(f"❌ Error contando filas en {table}: {e}")
+        return -1
+
+
+def get_all_counts():
+    """Devuelve un DataFrame con el conteo de filas por tabla"""
+    counts = []
+    for table in TABLES:
+        total = count_rows(table)
+        counts.append({"Tabla": table, "Filas": total})
+    return pd.DataFrame(counts)
+
+
 def test_extract():
     """Prueba la conexión y extrae las 2 primeras filas de cada tabla"""
     try:
@@ -64,4 +111,15 @@ def test_extract():
 if __name__ == "__main__":
     test_extract()
 
+    # 🔎 Esquemas de tablas
+    print("\n📋 Esquemas de tablas:")
+    all_schemas = get_all_schemas()
+    for table, schema in all_schemas.items():
+        print(f"\n📌 {table}")
+        print(schema)
+
+    # 📊 Conteo de filas
+    print("\n📊 Conteo de filas por tabla:")
+    counts_df = get_all_counts()
+    print(counts_df)
 
