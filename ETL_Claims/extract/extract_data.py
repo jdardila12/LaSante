@@ -3,24 +3,24 @@ import pandas as pd
 from datetime import datetime
 from config import CONN_STR
 
-# 📅 Fechas para filtros
+# Dates for filtering
 START_DATE = "2025-09-01"
 END_DATE = datetime.today().strftime("%Y-%m-%d")
 
-# 📋 Tablas grandes (requieren filtro de fechas)
+# Large tables (require date filtering)
 TABLE_DATE_FILTERS = {
     "dbo.edi_invoice": "InvoiceDt",
     "dbo.enc": "date",
-    "dbo.annualnotes": None,  # depende de enc, por ahora completa
+    "dbo.annualnotes": None,  # related to enc, for now full load
     "dbo.edi_inv_claimstatus_log": "date",
     "dbo.edi_inv_log": "date",
-    "dbo.edi_inv_cpt": None,  # depende de edi_invoice
+    "dbo.edi_inv_cpt": None,  # related to edi_invoice
     "dbo.edi_inspayments": "checkDate",
     "dbo.edi_paymentdetail": "timestamp",
-    "dbo.edi_inv_insurance": None,  # depende de edi_invoice
+    "dbo.edi_inv_insurance": None,  # related to edi_invoice
 }
 
-# 📋 Tablas maestras (se cargan completas)
+# Static tables (can be fully loaded)
 TABLES_STATIC = [
     "dbo.ClaimInsurance_vw",
     "dbo.doctors",
@@ -33,12 +33,12 @@ TABLES_STATIC = [
     "dbo.edi_facilities",
 ]
 
-# ✅ Todas las tablas que usaremos
+# Final list of tables to extract
 TABLES = list(TABLE_DATE_FILTERS.keys()) + TABLES_STATIC
 
 
 def get_table(table: str) -> pd.DataFrame:
-    """Extrae una tabla, con filtro de fechas si aplica."""
+    """Extracts a table, applying date filters if available."""
     col = TABLE_DATE_FILTERS.get(table)
     with pyodbc.connect(CONN_STR) as conn:
         if col:
@@ -53,35 +53,34 @@ def get_table(table: str) -> pd.DataFrame:
 
 
 def get_base_tables():
-    """Extrae todas las tablas definidas en TABLES."""
+    """Extracts all tables defined in TABLES."""
     data = {}
     for table in TABLES:
         try:
             df = get_table(table)
             data[table] = df
-            print(f"✅ {table}: {len(df)} filas extraídas")
+            print(f"{table}: {len(df)} rows extracted")
         except Exception as e:
-            print(f"❌ Error en {table}: {e}")
+            print(f"Error on {table}: {e}")
     return data
 
 
 def test_extract():
-    """Verifica conexión y lista las tablas configuradas."""
+    """Checks connection and prints configured tables."""
     try:
         with pyodbc.connect(CONN_STR):
-            print("✅ Conexión exitosa a SQL Server")
-            print("📋 Tablas configuradas para extracción:")
+            print("Successful connection to SQL Server")
+            print("Configured tables for extraction:")
             for table in TABLES:
                 if TABLE_DATE_FILTERS.get(table):
-                    print(f"   - {table} (filtrado por fechas)")
+                    print(f"   - {table} (date filtered)")
                 else:
-                    print(f"   - {table} (completa)")
+                    print(f"   - {table} (full load)")
     except Exception as e:
-        print(f"❌ Error al conectar: {e}")
+        print(f"Connection error: {e}")
 
 
 if __name__ == "__main__":
     test_extract()
-    # 🔽 Para correr la extracción completa, descomenta:
+    # To run the full extraction, uncomment:
     # data = get_base_tables()
-
