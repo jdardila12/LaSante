@@ -1,125 +1,87 @@
 import pyodbc
 import pandas as pd
+from datetime import datetime
 from config import CONN_STR
 
-# Tablas que realmente usamos en el ETL
-TABLES = [
+# 📅 Fechas para filtros
+START_DATE = "2025-09-01"
+END_DATE = datetime.today().strftime("%Y-%m-%d")
+
+# 📋 Tablas grandes (requieren filtro de fechas)
+TABLE_DATE_FILTERS = {
+    "dbo.edi_invoice": "InvoiceDt",
+    "dbo.enc": "date",
+    "dbo.annualnotes": None,  # depende de enc, por ahora completa
+    "dbo.edi_inv_claimstatus_log": "date",
+    "dbo.edi_inv_log": "date",
+    "dbo.edi_inv_cpt": None,  # depende de edi_invoice
+    "dbo.edi_inspayments": "checkDate",
+    "dbo.edi_paymentdetail": "timestamp",
+    "dbo.edi_inv_insurance": None,  # depende de edi_invoice
+}
+
+# 📋 Tablas maestras (se cargan completas)
+TABLES_STATIC = [
     "dbo.ClaimInsurance_vw",
-    "dbo.edi_invoice",
-    "dbo.enc",
     "dbo.doctors",
-    "dbo.annualnotes",
-    "dbo.edi_inv_claimstatus_log",
     "dbo.claimstatuscodes",
-    "dbo.edi_inv_log",
-    "dbo.edi_inv_cpt",
     "dbo.insurance",
     "dbo.insgroups",
     "dbo.insgroupmembers",
     "dbo.ClaimClassValidation",
-    "dbo.edi_inspayments",
-    "dbo.edi_paymentdetail",
-    "dbo.edi_inv_insurance",
-    "dbo.edi_facilities",
     "dbo.groupdetails",
+    "dbo.edi_facilities",
 ]
 
+# ✅ Todas las tablas que usaremos
+TABLES = list(TABLE_DATE_FILTERS.keys()) + TABLES_STATIC
 
-def get_table(name: str) -> pd.DataFrame:
-    """Extrae una tabla completa desde SQL Server"""
+
+def get_table(table: str) -> pd.DataFrame:
+    """Extrae una tabla, con filtro de fechas si aplica."""
+    col = TABLE_DATE_FILTERS.get(table)
     with pyodbc.connect(CONN_STR) as conn:
-        return pd.read_sql(f"SELECT * FROM {name}", conn)
+        if col:
+            query = f"""
+                SELECT * 
+                FROM {table}
+                WHERE {col} >= '{START_DATE}' AND {col} <= '{END_DATE}'
+            """
+        else:
+            query = f"SELECT * FROM {table}"
+        return pd.read_sql(query, conn)
 
 
 def get_base_tables():
-    """Extrae todas las tablas de la lista TABLES"""
+    """Extrae todas las tablas definidas en TABLES."""
     data = {}
     for table in TABLES:
         try:
             df = get_table(table)
             data[table] = df
+            print(f"✅ {table}: {len(df)} filas extraídas")
         except Exception as e:
-            print(f"❌ Error extrayendo {table}: {e}")
+            print(f"❌ Error en {table}: {e}")
     return data
 
 
-def describe_table_schema(table: str):
-    """Devuelve las columnas y sus tipos de datos para una tabla específica"""
-    query = f"""
-        SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH
-        FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_NAME = '{table.split('.')[-1]}'
-    """
-    try:
-        with pyodbc.connect(CONN_STR) as conn:
-            df = pd.read_sql(query, conn)
-            return df
-    except Exception as e:
-        print(f"❌ Error obteniendo esquema de {table}: {e}")
-        return None
-
-
-def get_all_schemas():
-    """Devuelve un diccionario con esquema (campos y tipos) de todas las tablas"""
-    schemas = {}
-    for table in TABLES:
-        schema_df = describe_table_schema(table)
-        if schema_df is not None:
-            schemas[table] = schema_df
-    return schemas
-
-
-def count_rows(table: str) -> int:
-    """Devuelve el número de filas de una tabla"""
-    query = f"SELECT COUNT(*) AS total FROM {table}"
-    try:
-        with pyodbc.connect(CONN_STR) as conn:
-            df = pd.read_sql(query, conn)
-            return int(df["total"].iloc[0])
-    except Exception as e:
-        print(f"❌ Error contando filas en {table}: {e}")
-        return -1
-
-
-def get_all_counts():
-    """Devuelve un DataFrame con el conteo de filas por tabla"""
-    counts = []
-    for table in TABLES:
-        total = count_rows(table)
-        counts.append({"Tabla": table, "Filas": total})
-    return pd.DataFrame(counts)
-
-
 def test_extract():
-    """Prueba la conexión y extrae las 2 primeras filas de cada tabla"""
+    """Verifica conexión y lista las tablas configuradas."""
     try:
-        with pyodbc.connect(CONN_STR) as conn:
-            print("✅ Conexión exitosa a SQL Server\n")
+        with pyodbc.connect(CONN_STR):
+            print("✅ Conexión exitosa a SQL Server")
+            print("📋 Tablas configuradas para extracción:")
             for table in TABLES:
-                try:
-                    query = f"SELECT TOP 2 * FROM {table}"
-                    df = pd.read_sql(query, conn)
-                    print(f"📌 {table}: {len(df)} filas, {len(df.columns)} columnas")
-                    print(df.head(2))  # muestra las primeras 2 filas
-                    print("-" * 40)
-                except Exception as e:
-                    print(f"❌ Error accediendo a {table}: {e}")
+                if TABLE_DATE_FILTERS.get(table):
+                    print(f"   - {table} (filtrado por fechas)")
+                else:
+                    print(f"   - {table} (completa)")
     except Exception as e:
-        print("❌ Error al conectar:", e)
+        print(f"❌ Error al conectar: {e}")
 
 
 if __name__ == "__main__":
     test_extract()
-
-    # 🔎 Esquemas de tablas
-    print("\n📋 Esquemas de tablas:")
-    all_schemas = get_all_schemas()
-    for table, schema in all_schemas.items():
-        print(f"\n📌 {table}")
-        print(schema)
-
-    # 📊 Conteo de filas
-    print("\n📊 Conteo de filas por tabla:")
-    counts_df = get_all_counts()
-    print(counts_df)
+    # 🔽 Para correr la extracción completa, descomenta:
+    # data = get_base_tables()
 
