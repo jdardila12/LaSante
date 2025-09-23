@@ -7,7 +7,8 @@ def build_wrap(edi_inv_insurance, insurance, paymentdetail):
     Returns one row per invoice with aggregated amounts.
     """
 
-    # Normalize insurance ID column for consistency
+    # Normalize insurance ID column for consistency  py -m transform.transform_wrap
+
     insurance = insurance.rename(columns={"insId": "InsId"})
 
     # Identify wrap insurances by name
