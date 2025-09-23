@@ -36,9 +36,19 @@ def build_claims(invoice, claiminsurance_vw, edi_inspayments, edi_paymentdetail,
     # Join with wrap
     df = df.merge(wrap, left_on="Id", right_on="InvoiceId", how="left")
 
-    # Facility info
-    df = df.merge(facilities[["Id", "Name"]], left_on="StmtBillingFacilityId", right_on="Id", how="left")
+    # Facility info (normalize types as int)
+    df["StmtBillingFacilityId"] = pd.to_numeric(df["StmtBillingFacilityId"], errors="coerce").astype("Int64")
+    facilities["Id"] = pd.to_numeric(facilities["Id"], errors="coerce").astype("Int64")
+    
+    df = df.merge(
+        facilities[["Id", "Name"]],
+        left_on="StmtBillingFacilityId",
+        right_on="Id",
+        how="left"
+    )
+    
     df = df.rename(columns={"Name": "FacilityName"})
+
 
 
     # Class validation
