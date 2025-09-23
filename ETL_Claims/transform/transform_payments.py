@@ -35,6 +35,11 @@ def build_payments(edi_inspayments, edi_paymentdetail, edi_invoice, claiminsuran
         fill_value=0
     ).reset_index()
 
+    # Ensure all expected columns exist
+    for col in ["PrimaryPaid", "SecondaryPaid", "TertiaryPaid", "UnknownPaid"]:
+        if col not in payments.columns:
+            payments[col] = 0
+
     return payments
 
 
@@ -52,6 +57,7 @@ def test_payments():
 
         print("✅ Payments dataset sample (10 rows):")
         print(payments.head(10))
+        print("\nColumns:", payments.columns.tolist())
 
     except Exception as e:
         print(f"❌ Error in test_payments: {e}")
@@ -59,3 +65,4 @@ def test_payments():
 
 if __name__ == "__main__":
     test_payments()
+
