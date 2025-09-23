@@ -37,8 +37,9 @@ def build_claims(invoice, claiminsurance_vw, edi_inspayments, edi_paymentdetail,
     df = df.merge(wrap, left_on="Id", right_on="InvoiceId", how="left")
 
     # Facility info
-    df = df.merge(facilities[["Id", "Name"]], left_on="facilityId", right_on="Id", how="left")
+    df = df.merge(facilities[["Id", "Name"]], left_on="StmtBillingFacilityId", right_on="Id", how="left")
     df = df.rename(columns={"Name": "FacilityName"})
+
 
     # Class validation
     df = df.merge(claimclassvalidation, on="Class", how="left")
