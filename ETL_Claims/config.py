@@ -12,48 +12,40 @@ SRC_CONN_STR = (
     f"DATABASE={SRC_DATABASE};"
     f"UID={SRC_USER};"
     f"PWD={SRC_PASSWORD};"
-    "Connection Timeout=60;"
+    "Connection Timeout=30;"
 )
 
-# === Destination database (Azure SQL Server) ===
+# === Destination database (Azure SQL) ===
 DST_SERVER = "lst-svr-sql02.database.windows.net"
 DST_DATABASE = "sigma_db"
 DST_USER = "dw_juan"
 DST_PASSWORD = "dw@J!597"
 
-# Using ODBC Driver 18 for better TLS compatibility with Azure SQL
 DST_CONN_STR = (
     "DRIVER={ODBC Driver 18 for SQL Server};"
     f"SERVER={DST_SERVER};"
     f"DATABASE={DST_DATABASE};"
     f"UID={DST_USER};"
     f"PWD={DST_PASSWORD};"
-    "Encrypt=yes;"
-    "TrustServerCertificate=no;"
-    "Connection Timeout=60;"
+    "Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;"
 )
 
-def test_connection(name: str, conn_str: str):
-    """
-    Generic connection test function.
-    Prints the result of the connection attempt.
-    """
+def test_connection(name: str, conn_str: str) -> bool:
+    """Try to connect and return True if successful, False otherwise."""
     try:
         with pyodbc.connect(conn_str) as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT GETDATE();")
-            result = cursor.fetchone()
-            print(f"✅ {name} connected successfully → {result[0]}")
-    except Exception as e:
-        print(f"❌ {name} connection failed → {e}")
+            return True
+    except Exception:
+        return False
 
 if __name__ == "__main__":
-    print("🔍 Testing database connections...\n")
+    print("🔍 Testing connections...\n")
 
-    # Test source (on-prem)
-    test_connection("SOURCE (mobiledoc)", SRC_CONN_STR)
+    src_ok = test_connection("SOURCE", SRC_CONN_STR)
+    dst_ok = test_connection("DESTINATION", DST_CONN_STR)
 
-    # Test destination (Azure)
-    test_connection("DESTINATION (sigma_db)", DST_CONN_STR)
+    # Results summary
+    print(f"SOURCE CONNECTION: {'✅ SUCCESS' if src_ok else '❌ FAIL'}")
+    print(f"DESTINATION CONNECTION: {'✅ SUCCESS' if dst_ok else '❌ FAIL'}")
 
-    print("\n🏁 Connection tests completed.")
+    print("\n🏁 Test completed.")
