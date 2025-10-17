@@ -1,28 +1,42 @@
 import pyodbc
-import os
 
-DB_SERVER = "ecw-db.lasantehealth.org"
-DB_DATABASE = "mobiledoc"
-DB_USER = "Temp-JArdila"
-DB_PASS = "]@zzySeal59"
+# === Source database (LaSante on-prem SQL Server) ===
+SRC_SERVER = "ecw-db.lasantehealth.org"
+SRC_DATABASE = "mobiledoc"
+SRC_USER = "Temp-JArdila"
+SRC_PASSWORD = "]@zzySeal59"
 
-CONN_STR = (
+SRC_CONN_STR = (
     "DRIVER={ODBC Driver 17 for SQL Server};"
-    f"SERVER={DB_SERVER};"
-    f"DATABASE={DB_DATABASE};"
-    f"UID={DB_USER};"
-    f"PWD={DB_PASS};"
+    f"SERVER={SRC_SERVER};"
+    f"DATABASE={SRC_DATABASE};"
+    f"UID={SRC_USER};"
+    f"PWD={SRC_PASSWORD};"
 )
 
-# === Output folder for CSV exports ===
-EXPORT_PATH = r"C:\Users\57310\Desktop\LASANTE\LaSante\Images"
-os.makedirs(EXPORT_PATH, exist_ok=True)
+# === Destination database (Azure SQL Server) ===
+DST_SERVER = "lst-svr-sql02.database.windows.net"
+DST_DATABASE = "sigma_db"
+DST_USER = "dw_juan"
+DST_PASSWORD = "dw@J!597"
 
-# Quick connection test (optional)
+DST_CONN_STR = (
+    "DRIVER={ODBC Driver 17 for SQL Server};"
+    f"SERVER={DST_SERVER};"
+    f"DATABASE={DST_DATABASE};"
+    f"UID={DST_USER};"
+    f"PWD={DST_PASSWORD};"
+)
+
+# === Quick connection test (optional) ===
 if __name__ == "__main__":
     try:
-        conn = pyodbc.connect(CONN_STR)
-        print("✅ Connection successful")
-        conn.close()
+        conn_src = pyodbc.connect(SRC_CONN_STR)
+        print("✅ Successfully connected to source (mobiledoc)")
+        conn_src.close()
+
+        conn_dst = pyodbc.connect(DST_CONN_STR)
+        print("✅ Successfully connected to destination (sigma_db)")
+        conn_dst.close()
     except Exception as e:
-        print("❌ Connection failed:", e)
+        print("❌ Connection error:", e)
