@@ -1,18 +1,32 @@
-import os
 import pandas as pd
-from config import EXPORT_PATH
+from sqlalchemy import create_engine
+from config import DST_SERVER, DST_DATABASE, DST_USER, DST_PASSWORD
 
-def save_to_csv(df: pd.DataFrame, name: str, max_rows: int = 2000):
+def get_engine():
     """
-    Save a DataFrame to CSV files in chunks of max_rows.
-    Files go to EXPORT_PATH/name_partX.csv
+    Create a SQLAlchemy engine for the Azure SQL Server connection.
     """
-    total_rows = len(df)
-    num_parts = (total_rows // max_rows) + 1
+    connection_string = (
+        f"mssql+pyodbc://{DST_USER}:{DST_PASSWORD}@{DST_SERVER}/{DST_DATABASE}"
+        "?driver=ODBC+Driver+17+for+SQL+Server"
+    )
+    return create_engine(connection_string)
 
-    for i in range(num_parts):
-        chunk = df.iloc[i*max_rows:(i+1)*max_rows]
-        if not chunk.empty:
-            file_path = os.path.join(EXPORT_PATH, f"{name}_part{i+1}.csv")
-            chunk.to_csv(file_path, index=False, encoding="utf-8-sig")
-            print(f"✅ Saved: {file_path} ({len(chunk)} rows)")
+def load_to_sql(df: pd.DataFrame, table_name: str, if_exists: str = "replace"):
+    """
+    Load a pandas DataFrame into an Azure SQL Server table.
+
+    Parameters:
+    - df: pandas DataFrame to load
+    - table_name: target table name in Azure SQL Server
+    - if_exists: behavior when the table already exists
+        'fail'    → raise an error
+        'replace' → drop the table and recreate it
+        'append'  → insert new rows into the existing table
+    """
+    try:
+        engine = get_engine()
+        df.to_sql(table_name, con=engine, if_exists=if_exists, index=False)
+        print(f"✅ Tabla '{table_name}' cargada exitosamente en {DST_DATABASE} ({len(df)} filas).")
+    except Exception as e:
+        print(f"❌ Error'{table_name}': {e}")
