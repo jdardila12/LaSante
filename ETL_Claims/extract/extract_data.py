@@ -4,7 +4,7 @@ from datetime import datetime
 from config import CONN_STR
 
 # Dates for filtering
-START_DATE = "2025-09-01"
+START_DATE = "2025-01-01"
 END_DATE = datetime.today().strftime("%Y-%m-%d")
 
 # Large tables (require date filtering)
