@@ -15,7 +15,7 @@ SRC_CONN_STR = (
     "Connection Timeout=30;"
 )
 
-# === Destination database (Azure SQL) ===
+# === Destination database (Azure SQL Server) ===
 DST_SERVER = "lst-svr-sql02.database.windows.net"
 DST_DATABASE = "sigma_db"
 DST_USER = "dw_juan"
@@ -27,8 +27,11 @@ DST_CONN_STR = (
     f"DATABASE={DST_DATABASE};"
     f"UID={DST_USER};"
     f"PWD={DST_PASSWORD};"
-    "Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;"
+    "Encrypt=yes;"
+    "TrustServerCertificate=no;"
+    "Connection Timeout=60;"
 )
+
 
 def test_connection(name: str, conn_str: str) -> bool:
     """Try to connect and return True if successful, False otherwise."""
