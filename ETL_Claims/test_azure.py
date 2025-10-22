@@ -1,7 +1,8 @@
 import pyodbc
-import os
-import platform
-import subprocess
+import socket
+from datetime import datetime
+
+print("\n🔍 Test de conexión (LaSante local y Azure SQL)\n")
 
 # === SOURCE (on-prem LaSante) ===
 SRC_SERVER = "ecw-db.lasantehealth.org"
@@ -26,60 +27,45 @@ DST_PASSWORD = "dw@J!597"
 
 DST_CONN_STR = (
     "DRIVER={ODBC Driver 18 for SQL Server};"
-    "SERVER=tcp:lst-svr-sql02.database.windows.net,1433;"
-    "DATABASE=sigma_db;"
-    "UID=dw_juan;"
-    "PWD=dw@J!597;"
+    f"SERVER=tcp:{DST_SERVER},1433;"
+    f"DATABASE={DST_DATABASE};"
+    f"UID={DST_USER};"
+    f"PWD={DST_PASSWORD};"
     "Encrypt=yes;"
     "TrustServerCertificate=no;"
     "Connection Timeout=30;"
 )
 
-# === FUNCIONES ===
+# --- 1. Probar conexión a la base de datos SOURCE (local / mobiledoc) ---
+print("🧩 Probando conexión a SOURCE (mobiledoc)...")
+try:
+    conn_source = pyodbc.connect(SRC_CONN_STR)
+    cursor = conn_source.cursor()
+    cursor.execute("SELECT GETDATE()")
+    result = cursor.fetchone()
+    print(f"✅ SOURCE (mobiledoc) conectado correctamente — {result[0]}")
+    conn_source.close()
+except Exception as e:
+    print(f"❌ SOURCE (mobiledoc) error — {e}")
 
-def ping_host(host):
-    """Hacer ping al servidor para verificar conectividad."""
-    print(f"📡 Haciendo ping a {host}...")
-    try:
-        # Windows usa -n, Linux/Mac usa -c
-        param = "-n" if platform.system().lower() == "windows" else "-c"
-        result = subprocess.run(
-            ["ping", param, "2", host],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
-        if result.returncode == 0:
-            print("   ✅ Respuesta recibida (host accesible)\n")
-        else:
-            print("   ⚠️  No hubo respuesta (posible bloqueo de red)\n")
-    except Exception as e:
-        print(f"   ⚠️  Error ejecutando ping: {e}\n")
+# --- 2. Hacer ping al servidor Azure ---
+print(f"\n📡 Haciendo ping a {DST_SERVER} ...")
+try:
+    socket.create_connection((DST_SERVER, 1433), timeout=5)
+    print("✅ Conexión TCP exitosa (puerto 1433 abierto)")
+except Exception as e:
+    print(f"⚠️ No hubo respuesta (posible bloqueo de red) — {e}")
 
-def test_connection(name, conn_str):
-    """Probar conexión con pyodbc."""
-    print(f"🔹 Probando conexión a {name}...")
-    try:
-        with pyodbc.connect(conn_str) as conn:
-            cur = conn.cursor()
-            cur.execute("SELECT GETDATE();")
-            row = cur.fetchone()
-            print(f"   ✅ {name} conectado correctamente — {row[0]}\n")
-    except Exception as e:
-        print(f"   ❌ {name} error — {e}\n")
+# --- 3. Probar conexión a la base de datos DESTINATION (Azure SQL) ---
+print("\n🧩 Probando conexión a DESTINATION (sigma_db)...")
+try:
+    conn_dest = pyodbc.connect(DST_CONN_STR)
+    cursor = conn_dest.cursor()
+    cursor.execute("SELECT DB_NAME(), SUSER_NAME(), GETDATE()")
+    result = cursor.fetchone()
+    print(f"✅ DESTINATION conectado correctamente — DB: {result[0]}, Usuario: {result[1]}, Hora: {result[2]}")
+    conn_dest.close()
+except Exception as e:
+    print(f"❌ DESTINATION (sigma_db) error — {e}")
 
-# === MAIN ===
-if __name__ == "__main__":
-    print("🔍 Test de conexión (LaSante local y Azure SQL)\n")
-
-    # 1️⃣ Probar origen (on-prem)
-    test_connection("SOURCE (mobiledoc)", SRC_CONN_STR)
-
-    # 2️⃣ Verificar si Azure responde al ping
-    ping_host("lst-svr-sql02.database.windows.net")
-
-    # 3️⃣ Probar destino (Azure)
-    test_connection("DESTINATION (sigma_db)", DST_CONN_STR)
-
-    print("🏁 Prueba finalizada.")
-
+print("\n✨ Prueba finalizada.")
