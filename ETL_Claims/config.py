@@ -24,7 +24,7 @@ DST_PASSWORD = os.getenv("DST_PASSWORD", "dw@J!597")
 
 DST_CONN_STR = (
     "DRIVER={ODBC Driver 18 for SQL Server};"
-    f"SERVER={DST_SERVER},1433;"
+    f"SERVER=tcp:{DST_SERVER},1433;"
     f"DATABASE={DST_DATABASE};"
     f"UID={DST_USER};"
     f"PWD={DST_PASSWORD};"
@@ -53,4 +53,5 @@ if __name__ == "__main__":
     dst_ok = test_connection("DESTINATION (Azure Sigma)", DST_CONN_STR)
 
     print("\n🏁 Test completed.")
+
 
