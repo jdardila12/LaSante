@@ -1,10 +1,11 @@
 import pyodbc
+import os
 
-# === Source database (On-prem LaSante) ===
-SRC_SERVER = "ecw-db.lasantehealth.org"
-SRC_DATABASE = "mobiledoc"
-SRC_USER = "Temp-JArdila"
-SRC_PASSWORD = "]@zzySeal59"
+# === SOURCE (On-prem LaSante) ===
+SRC_SERVER = os.getenv("SRC_SERVER", "ecw-db.lasantehealth.org")
+SRC_DATABASE = os.getenv("SRC_DATABASE", "mobiledoc")
+SRC_USER = os.getenv("SRC_USER", "Temp-JArdila")
+SRC_PASSWORD = os.getenv("SRC_PASSWORD", "]@zzySeal59")
 
 SRC_CONN_STR = (
     "DRIVER={ODBC Driver 17 for SQL Server};"
@@ -15,15 +16,15 @@ SRC_CONN_STR = (
     "Connection Timeout=30;"
 )
 
-# === Destination database (Azure SQL Server) ===
-DST_SERVER = "lst-svr-sql02.database.windows.net"
-DST_DATABASE = "sigma_db"
-DST_USER = "dw_juan"
-DST_PASSWORD = "dw@J!597"
+# === DESTINATION (Azure SQL Server) ===
+DST_SERVER = os.getenv("DST_SERVER", "lst-svr-sql02.database.windows.net")
+DST_DATABASE = os.getenv("DST_DATABASE", "sigma_db")
+DST_USER = os.getenv("DST_USER", "dw_juan")
+DST_PASSWORD = os.getenv("DST_PASSWORD", "dw@J!597")
 
 DST_CONN_STR = (
     "DRIVER={ODBC Driver 18 for SQL Server};"
-    f"SERVER={DST_SERVER};"
+    f"SERVER={DST_SERVER},1433;"
     f"DATABASE={DST_DATABASE};"
     f"UID={DST_USER};"
     f"PWD={DST_PASSWORD};"
@@ -37,18 +38,19 @@ def test_connection(name: str, conn_str: str) -> bool:
     """Try to connect and return True if successful, False otherwise."""
     try:
         with pyodbc.connect(conn_str) as conn:
+            conn.cursor().execute("SELECT 1;")
+            print(f"✅ {name} connection successful.")
             return True
-    except Exception:
+    except Exception as e:
+        print(f"❌ {name} connection failed: {e}")
         return False
 
+
 if __name__ == "__main__":
-    print("🔍 Testing connections...\n")
+    print("🔍 Testing database connections...\n")
 
-    src_ok = test_connection("SOURCE", SRC_CONN_STR)
-    dst_ok = test_connection("DESTINATION", DST_CONN_STR)
-
-    # Results summary
-    print(f"SOURCE CONNECTION: {'✅ SUCCESS' if src_ok else '❌ FAIL'}")
-    print(f"DESTINATION CONNECTION: {'✅ SUCCESS' if dst_ok else '❌ FAIL'}")
+    src_ok = test_connection("SOURCE (LaSante)", SRC_CONN_STR)
+    dst_ok = test_connection("DESTINATION (Azure Sigma)", DST_CONN_STR)
 
     print("\n🏁 Test completed.")
+
