@@ -2,7 +2,7 @@ import pyodbc
 import socket
 from datetime import datetime
 
-print("\n🔍 Test de conexión (LaSante local y Azure SQL)\n")
+print("\n--- Connection Test: Local (LaSante) and Azure SQL ---\n")
 
 # === SOURCE (on-prem LaSante) ===
 SRC_SERVER = "ecw-db.lasantehealth.org"
@@ -36,36 +36,37 @@ DST_CONN_STR = (
     "Connection Timeout=30;"
 )
 
-# --- 1. Probar conexión a la base de datos SOURCE (local / mobiledoc) ---
-print("🧩 Probando conexión a SOURCE (mobiledoc)...")
+# --- 1. Test connection to SOURCE (on-prem LaSante) ---
+print("Testing SOURCE connection (mobiledoc)...")
 try:
     conn_source = pyodbc.connect(SRC_CONN_STR)
     cursor = conn_source.cursor()
     cursor.execute("SELECT GETDATE()")
     result = cursor.fetchone()
-    print(f"✅ SOURCE (mobiledoc) conectado correctamente — {result[0]}")
+    print(f"Source connected successfully — {result[0]}")
     conn_source.close()
 except Exception as e:
-    print(f"❌ SOURCE (mobiledoc) error — {e}")
+    print(f"Source connection failed: {e}")
 
-# --- 2. Hacer ping al servidor Azure ---
-print(f"\n📡 Haciendo ping a {DST_SERVER} ...")
+# --- 2. Ping Azure SQL server (port 1433) ---
+print(f"\nPinging {DST_SERVER} ...")
 try:
     socket.create_connection((DST_SERVER, 1433), timeout=5)
-    print("✅ Conexión TCP exitosa (puerto 1433 abierto)")
+    print("TCP connection successful (port 1433 open).")
 except Exception as e:
-    print(f"⚠️ No hubo respuesta (posible bloqueo de red) — {e}")
+    print(f"Ping failed or port blocked: {e}")
 
-# --- 3. Probar conexión a la base de datos DESTINATION (Azure SQL) ---
-print("\n🧩 Probando conexión a DESTINATION (sigma_db)...")
+# --- 3. Test connection to DESTINATION (Azure SQL) ---
+print("\nTesting DESTINATION connection (sigma_db)...")
 try:
     conn_dest = pyodbc.connect(DST_CONN_STR)
     cursor = conn_dest.cursor()
     cursor.execute("SELECT DB_NAME(), SUSER_NAME(), GETDATE()")
     result = cursor.fetchone()
-    print(f"✅ DESTINATION conectado correctamente — DB: {result[0]}, Usuario: {result[1]}, Hora: {result[2]}")
+    print(f"Destination connected successfully — DB: {result[0]}, User: {result[1]}, Time: {result[2]}")
     conn_dest.close()
 except Exception as e:
-    print(f"❌ DESTINATION (sigma_db) error — {e}")
+    print(f"Destination connection failed: {e}")
 
-print("\n✨ Prueba finalizada.")
+print("\nTest completed.")
+
